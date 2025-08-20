@@ -112,16 +112,30 @@ function renderStylePanel() {
   panel.innerHTML = `
     <h3 class="font-bold mb-2">Estilo do GeoJSON</h3>
     <label class="flex items-center gap-2">Cor da Linha: <input type="color" id="color" value="${style.color || '#3388ff'}"></label>
-    <label class="flex items-center gap-2">Espessura: <input type="range" id="weight" min="0" max="10" value="${typeof style.weight !== 'undefined' ? style.weight : 3}"></label>
+  <label class="flex items-center gap-2">Espessura: <input type="range" id="weight" min="0" max="10" value="${typeof style.weight !== 'undefined' ? style.weight : 3}" style="width:120px;"> <input type="number" id="weightNum" min="0" max="10" value="${typeof style.weight !== 'undefined' ? style.weight : 3}" style="width:60px;"></label>
     <label class="flex items-center gap-2">Cor do Preenchimento: <input type="color" id="fillColor" value="${style.fillColor || '#3388ff'}"></label>
-    <label class="flex items-center gap-2">Opacidade do Preenchimento: <input type="range" id="fillOpacity" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}"></label>
-    <label class="flex items-center gap-2">Raio dos Pontos: <input type="range" id="radius" min="1" max="30" value="${style.radius || 8}"></label>
+  <label class="flex items-center gap-2">Opacidade do Preenchimento: <input type="range" id="fillOpacity" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}" style="width:120px;"> <input type="number" id="fillOpacityNum" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}" style="width:60px;"></label>
+  <label class="flex items-center gap-2">Raio dos Pontos: <input type="range" id="radius" min="1" max="30" value="${style.radius || 8}" style="width:120px;"> <input type="number" id="radiusNum" min="1" max="30" value="${style.radius || 8}" style="width:60px;"></label>
   `;
   ['color', 'weight', 'fillColor', 'fillOpacity', 'radius'].forEach(attr => {
     panel.querySelector(`#${attr}`).oninput = (e) => {
       style[attr] = attr === 'weight' || attr === 'radius' ? parseInt(e.target.value) : (attr.includes('Opacity') ? parseFloat(e.target.value) : e.target.value);
+      // Sincroniza o input numérico
+      const numInput = panel.querySelector(`#${attr}Num`);
+      if (numInput) numInput.value = style[attr];
       updateLayerStyle(activeLayerIndex);
     };
+    // Adiciona evento ao input numérico
+    const numInput = panel.querySelector(`#${attr}Num`);
+    if (numInput) {
+      numInput.oninput = (e) => {
+        style[attr] = attr === 'weight' || attr === 'radius' ? parseInt(e.target.value) : (attr.includes('Opacity') ? parseFloat(e.target.value) : e.target.value);
+        // Sincroniza o slider
+        const slider = panel.querySelector(`#${attr}`);
+        if (slider) slider.value = style[attr];
+        updateLayerStyle(activeLayerIndex);
+      };
+    }
   });
 }
 
@@ -156,8 +170,40 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     reader.onload = function(evt) {
       try {
         const geojson = JSON.parse(evt.target.result);
-        addGeoJsonLayer(geojson, file.name);
-        showMessage(`Arquivo ${file.name} carregado!`, 'success');
+        // Se for FeatureCollection, separa cada feature em uma camada
+        if (geojson.type === 'FeatureCollection' && Array.isArray(geojson.features)) {
+          geojson.features.forEach((feature, idx) => {
+            // Mantém o estilo existente se houver
+            let style = {};
+            if (feature.properties && feature.properties._style) {
+              style = { ...feature.properties._style };
+            } else {
+              // Se propriedades de estilo estiverem diretamente nas properties
+              ['color','weight','fillColor','fillOpacity','radius','stroke','stroke-width'].forEach(k => {
+                if (feature.properties && typeof feature.properties[k] !== 'undefined') {
+                  style[k] = feature.properties[k];
+                }
+              });
+            }
+            addGeoJsonLayer(feature, `${file.name} - feature ${idx+1}`, style);
+          });
+          showMessage(`Arquivo ${file.name} carregado! (${geojson.features.length} features)`, 'success');
+        } else if (geojson.type === 'Feature') {
+          let style = {};
+          if (geojson.properties && geojson.properties._style) {
+            style = { ...geojson.properties._style };
+          } else {
+            ['color','weight','fillColor','fillOpacity','radius','stroke','stroke-width'].forEach(k => {
+              if (geojson.properties && typeof geojson.properties[k] !== 'undefined') {
+                style[k] = geojson.properties[k];
+              }
+            });
+          }
+          addGeoJsonLayer(geojson, file.name, style);
+          showMessage(`Arquivo ${file.name} carregado! (1 feature)`, 'success');
+        } else {
+          showMessage(`Arquivo ${file.name} não é um GeoJSON válido!`, 'error');
+        }
       } catch (err) {
         showMessage(`Erro ao carregar ${file.name}: ${err.message}`, 'error');
       }
@@ -197,6 +243,10 @@ document.getElementById('exportGeojson').onclick = function() {
       return layerObj.geojson.features.map(f => {
         const featureCopy = JSON.parse(JSON.stringify(f));
         featureCopy.properties = featureCopy.properties || {};
+        // Remove propriedades antigas de estilo
+        ['_style','color','weight','fillColor','fillOpacity','radius','stroke','stroke-width','opacity'].forEach(k => {
+          delete featureCopy.properties[k];
+        });
         featureCopy.properties = addStrokeProps({ ...style,
           ...featureCopy.properties
         });
@@ -205,6 +255,10 @@ document.getElementById('exportGeojson').onclick = function() {
     } else if (layerObj.geojson.type === 'Feature') {
       const featureCopy = JSON.parse(JSON.stringify(layerObj.geojson));
       featureCopy.properties = featureCopy.properties || {};
+      // Remove propriedades antigas de estilo
+      ['_style','color','weight','fillColor','fillOpacity','radius','stroke','stroke-width','opacity'].forEach(k => {
+        delete featureCopy.properties[k];
+      });
       featureCopy.properties = addStrokeProps({ ...style,
         ...featureCopy.properties
       });
