@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizador GeoJSON</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #map { height: 500px; margin-top: 20px; border-radius: 8px; }
+        #output { white-space: pre-wrap; background: #f4f4f4; padding: 10px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Carregar e visualizar arquivo GeoJSON</h2>
+    <input type="file" id="geojsonFile" accept=".geojson,.json">
+    <div id="map"></div>
+    <div id="output"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        var geojsonLayer;
+        document.getElementById('geojsonFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const geojson = JSON.parse(e.target.result);
+                    document.getElementById('output').textContent = JSON.stringify(geojson, null, 2);
+                    if (geojsonLayer) {
+                        map.removeLayer(geojsonLayer);
+                    }
+                    geojsonLayer = L.geoJSON(geojson).addTo(map);
+                    var bounds = geojsonLayer.getBounds();
+                    if (bounds.isValid()) {
+                        map.fitBounds(bounds);
+                    }
+                } catch (err) {
+                    document.getElementById('output').textContent = 'Erro ao ler o arquivo GeoJSON: ' + err;
+                }
+            };
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>
