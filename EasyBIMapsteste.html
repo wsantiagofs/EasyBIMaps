@@ -30,8 +30,7 @@
       <input type="file" id="fileInput" multiple accept=".geojson,.json" class="mb-2" />
       <ul id="layerList" class="mb-2"></ul>
       <div id="stylePanel" class="hidden flex flex-col gap-2 p-2 bg-gray-50 rounded-lg shadow"></div>
-      <button id="exportGeojson" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Exportar Tudo como GeoJSON</button>
-      <button id="exportPNG" class="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Exportar Mapa como PNG</button>
+      <button id="exportGeojson" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Exportar como GeoJSON</button>
       <!-- Campo para nome do arquivo final -->
       <div class="mt-2 flex flex-col gap-2">
         <label class="flex items-center gap-2">Nome do arquivo:
@@ -160,7 +159,7 @@
       panel.innerHTML = `
         <h3 class="font-bold mb-2">Estilo do GeoJSON</h3>
         <label class="flex items-center gap-2">Cor da Linha: <input type="color" id="color" value="${style.color||'#3388ff'}"></label>
-        <label class="flex items-center gap-2">Espessura: <input type="range" id="weight" min="0" max="10" value="${style.weight||3}"></label>
+        <label class="flex items-center gap-2">Espessura: <input type="range" id="weight" min="1" max="10" value="${style.weight||3}"></label>
         <label class="flex items-center gap-2">Opacidade da Linha: <input type="range" id="opacity" min="0" max="1" step="0.05" value="${style.opacity||1}"></label>
         <label class="flex items-center gap-2">Cor do Preenchimento: <input type="color" id="fillColor" value="${style.fillColor||'#3388ff'}"></label>
         <label class="flex items-center gap-2">Opacidade do Preenchimento: <input type="range" id="fillOpacity" min="0" max="1" step="0.05" value="${style.fillOpacity||0.2}"></label>
@@ -271,22 +270,6 @@
       document.body.removeChild(a);
       showMessage('GeoJSON exportado!', 'success');
     };
-    // --- Exportar Mapa como PNG ---
-    document.getElementById('exportPNG').onclick = function() {
-      leafletImage(map, function(err, canvas) {
-        if (err) return showMessage('Erro ao exportar imagem!', 'error');
-        canvas.toBlob(function(blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'EasyBIMaps.png';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          showMessage('Imagem exportada!', 'success');
-        });
-      });
-    };
     // --- Responsividade ---
     function handleResize() {
       const h = window.innerHeight;
@@ -298,17 +281,27 @@
     function renderStylePreview() {
   const preview = document.getElementById('stylePreview');
   if (!preview) return;
-  let out = '{\n  "type": "FeatureCollection",\n  "features": [\n';
+  let out = '<div style="font-family:monospace; width:100%;">';
   layers.forEach(layerObj => {
     const style = layerObj.style || {};
-    const props = [];
+    out += `<div style='margin-bottom:1.5em;'>`;
+    out += `<div style='font-size:1.1em;font-weight:bold;margin-bottom:0.5em;'>${layerObj.name}</div>`;
     Object.entries(style).forEach(([k,v]) => {
-      props.push(`"${k}":${typeof v==='string'?`"${v}"`:v}`);
+      if ((k === 'color' || k === 'fillColor' || k === 'stroke') && typeof v === 'string' && v.startsWith('#')) {
+        out += `<div style='font-weight:bold; margin-left:1em; margin-bottom:0.2em;'>${k}: <span style='font-weight:normal;'>${v}</span> <span style='display:inline-block;width:18px;height:18px;border-radius:4px;border:1px solid #ccc;vertical-align:middle;background:${v};margin-left:6px;'></span></div>`;
+      } else {
+        out += `<div style='font-weight:bold; margin-left:1em; margin-bottom:0.2em;'>${k}: <span style='font-weight:normal;'>${typeof v==='string'?v:v}</span></div>`;
+      }
     });
-    out += `    ${layerObj.name}: { ${props.join(', ')} }\n`;
+    out += `</div>`;
   });
-  out += '  ]\n}';
-  preview.textContent = out;
+  out += '</div>';
+  preview.innerHTML = out;
+  preview.style.fontSize = '1em';
+  preview.style.overflowX = 'auto';
+  preview.style.maxHeight = 'none';
+  preview.style.height = 'auto';
+  preview.style.width = '100%';
 }
     // --- Função para trocar a ordem das camadas ---
 function moveLayer(fromIdx, toIdx) {

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>EasyBIMaps - Visualizador e Editor GeoJSON</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <!-- leaflet-image.js -->
+    <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
+
+    <!-- Nosso estilo e script -->
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="h-screen w-screen bg-gray-100">
+    <div class="flex flex-col md:flex-row h-screen w-screen">
+        <!-- Painel de Controles -->
+        <aside class="md:w-1/5 w-full bg-white shadow-lg rounded-r-2xl p-4 flex flex-col gap-4">
+            <h2 class="text-xl font-bold mb-2">Controles</h2>
+            <input type="file" id="fileInput" multiple accept=".geojson,.json" class="mb-2" />
+            <ul id="layerList" class="mb-2"></ul>
+            <div id="stylePanel" class="hidden flex flex-col gap-2 p-2 bg-gray-50 rounded-lg shadow"></div>
+            <button id="exportGeojson" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Exportar como GeoJSON</button>
+            <!-- Campo para nome do arquivo final -->
+            <div class="mt-2 flex flex-col gap-2">
+                <label class="flex items-center gap-2">Nome do arquivo:
+                    <input type="text" id="exportFileName" value="EasyBIMaps" class="border rounded px-2 py-1" style="width:180px;">
+                </label>
+            </div>
+        </aside>
+        <!-- Painel do Mapa -->
+        <main class="md:w-2/5 w-full flex-1 flex flex-col">
+            <div id="map" class="flex-1 rounded-2xl shadow-lg m-4"></div>
+        </main>
+        <!-- Painel de Visualização de Estilo -->
+        <aside class="md:w-1/5 w-full p-4 flex flex-col gap-2">
+            <h2 class="text-lg font-bold mb-2">Visualização do Código GeoJSON</h2>
+            <div id="stylePreview" class="bg-gray-50 rounded-lg shadow p-2 text-xs overflow-auto max-h-48 select-none"></div>
+        </aside>
+    </div>
+    <div id="messageBox" class="message-box hidden bg-black text-white px-4 py-2 rounded shadow-lg"></div>
+
+    <!-- Nosso script principal -->
+    <script src="app.js"></script>
+</body>
+</html>
