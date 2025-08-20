@@ -32,6 +32,12 @@
       <div id="stylePanel" class="hidden flex flex-col gap-2 p-2 bg-gray-50 rounded-lg shadow"></div>
       <button id="exportGeojson" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Exportar Tudo como GeoJSON</button>
       <button id="exportPNG" class="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Exportar Mapa como PNG</button>
+      <!-- Campo para nome do arquivo final -->
+      <div class="mt-2 flex flex-col gap-2">
+        <label class="flex items-center gap-2">Nome do arquivo:
+          <input type="text" id="exportFileName" value="EasyBIMaps" class="border rounded px-2 py-1" style="width:180px;">
+        </label>
+      </div>
     </aside>
     <!-- Painel do Mapa -->
     <main class="md:w-2/5 w-full flex-1 flex flex-col">
@@ -210,34 +216,44 @@
     // --- Exportar Tudo como GeoJSON ---
     document.getElementById('exportGeojson').onclick = function() {
       if (layers.length === 0) return showMessage('Nenhuma camada para exportar!', 'error');
+      let fileName = document.getElementById('exportFileName').value.trim();
+      if (!fileName) fileName = 'EasyBIMaps';
+      fileName += '.geojson';
       // Aplica estilização completa no início das propriedades de todas as features de todos os arquivos
       const defaultStyle = {
-  color: '#3388ff',
-  weight: 3,
-  opacity: 1,
-  fillColor: '#3388ff',
-  fillOpacity: 0.2,
-  radius: 8
+        color: '#3388ff',
+        weight: 3,
+        opacity: 1,
+        fillColor: '#3388ff',
+        fillOpacity: 0.2,
+        radius: 8
       };
       const allFeatures = layers.flatMap(layerObj => {
         let style = { ...defaultStyle, ...layerObj.style };
-  // ...existing code...
+        // Adiciona stroke e stroke-width ao final
+        style.stroke = style.color;
+        style['stroke-width'] = style.weight;
         // LOG para depuração
-  console.log('Exportando camada:', layerObj.name, 'Estilo exportado:', style);
+        console.log('Exportando camada:', layerObj.name, 'Estilo exportado:', style);
+
+        function addStrokeProps(props) {
+          props.stroke = props.color;
+          props['stroke-width'] = props.weight;
+          return props;
+        }
 
         if (layerObj.geojson.type === 'FeatureCollection') {
           return layerObj.geojson.features.map(f => {
             const featureCopy = JSON.parse(JSON.stringify(f));
             featureCopy.properties = featureCopy.properties || {};
-            const styledProps = { ...style, ...featureCopy.properties };
-            featureCopy.properties = styledProps;
+            // Adiciona stroke e stroke-width ao final das propriedades da feature
+            featureCopy.properties = addStrokeProps({ ...style, ...featureCopy.properties });
             return featureCopy;
           });
         } else if (layerObj.geojson.type === 'Feature') {
           const featureCopy = JSON.parse(JSON.stringify(layerObj.geojson));
           featureCopy.properties = featureCopy.properties || {};
-          const styledProps = { ...style, ...featureCopy.properties };
-          featureCopy.properties = styledProps;
+          featureCopy.properties = addStrokeProps({ ...style, ...featureCopy.properties });
           return [featureCopy];
         }
         return [];
@@ -249,7 +265,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'EasyBIMaps.geojson';
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -294,6 +310,49 @@
   out += '  ]\n}';
   preview.textContent = out;
 }
+    // --- Função para trocar a ordem das camadas ---
+function moveLayer(fromIdx, toIdx) {
+  if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= layers.length || toIdx >= layers.length) return;
+  const [moved] = layers.splice(fromIdx, 1);
+  layers.splice(toIdx, 0, moved);
+  renderLayerList();
+  renderStylePanel();
+  // Re-renderiza todas as camadas no mapa
+  layers.forEach(layerObj => {
+    map.removeLayer(layerObj.leafletLayer);
+    layerObj.leafletLayer.addTo(map);
+  });
+}
+
+// --- Adiciona drag-and-drop na lista de camadas ---
+function enableLayerDragDrop() {
+  const ul = document.getElementById('layerList');
+  ul.querySelectorAll('li').forEach((li, idx) => {
+    li.draggable = true;
+    li.ondragstart = (e) => {
+      e.dataTransfer.setData('layerIdx', idx);
+    };
+    li.ondragover = (e) => {
+      e.preventDefault();
+      li.classList.add('bg-yellow-100');
+    };
+    li.ondragleave = () => {
+      li.classList.remove('bg-yellow-100');
+    };
+    li.ondrop = (e) => {
+      li.classList.remove('bg-yellow-100');
+      const fromIdx = parseInt(e.dataTransfer.getData('layerIdx'));
+      moveLayer(fromIdx, idx);
+    };
+  });
+}
+
+// Modifique renderLayerList para chamar enableLayerDragDrop
+const originalRenderLayerList = renderLayerList;
+renderLayerList = function() {
+  originalRenderLayerList();
+  enableLayerDragDrop();
+};
   </script>
 </body>
 </html>
