@@ -111,10 +111,10 @@ function renderStylePanel() {
   });
   panel.innerHTML = `
     <h3 class="font-bold mb-2">Estilo do GeoJSON</h3>
-    <label class="flex items-center gap-2">Cor da Linha: <input type="color" id="color" value="${style.color || '#3388ff'}"></label>
+  <label class="flex items-center gap-2">Cor da Linha: <input type="color" id="color" value="${style.color || '#3388ff'}" style="width:40px;"> <input type="text" id="colorHex" value="${style.color || '#3388ff'}" maxlength="7" style="width:80px;text-transform:uppercase;" readonly></label>
   <label class="flex items-center gap-2">Espessura: <input type="range" id="weight" min="0" max="10" value="${typeof style.weight !== 'undefined' ? style.weight : 3}" style="width:120px;"> <input type="number" id="weightNum" min="0" max="10" value="${typeof style.weight !== 'undefined' ? style.weight : 3}" style="width:60px;"></label>
-    <label class="flex items-center gap-2">Cor do Preenchimento: <input type="color" id="fillColor" value="${style.fillColor || '#3388ff'}"></label>
-  <label class="flex items-center gap-2">Opacidade do Preenchimento: <input type="range" id="fillOpacity" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}" style="width:120px;"> <input type="number" id="fillOpacityNum" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}" style="width:60px;"></label>
+  <label class="flex items-center gap-2">Cor do Preenchimento: <input type="color" id="fillColor" value="${style.fillColor || '#3388ff'}" style="width:40px;"> <input type="text" id="fillColorHex" value="${style.fillColor || '#3388ff'}" maxlength="7" style="width:80px;text-transform:uppercase;" readonly></label>
+  <label class="flex items-center gap-2">Opacidade do Preenchimento: <input type="range" id="fillOpacity" min="0" max="1" step="0.05" value="${typeof style.fillOpacity !== 'undefined' ? style.fillOpacity : 0.2}" style="width:120px;"> <input type="number" id="fillOpacityNum" min="0" max="1" step="0.05" value="${style.fillOpacity || 0.2}" style="width:60px;"></label>
   <label class="flex items-center gap-2">Raio dos Pontos: <input type="range" id="radius" min="1" max="30" value="${style.radius || 8}" style="width:120px;"> <input type="number" id="radiusNum" min="1" max="30" value="${style.radius || 8}" style="width:60px;"></label>
   `;
   ['color', 'weight', 'fillColor', 'fillOpacity', 'radius'].forEach(attr => {
@@ -123,6 +123,15 @@ function renderStylePanel() {
       // Sincroniza o input numérico
       const numInput = panel.querySelector(`#${attr}Num`);
       if (numInput) numInput.value = style[attr];
+      // Sincroniza o campo HEX se for cor
+      if (attr === 'color') {
+        const hexInput = panel.querySelector('#colorHex');
+        if (hexInput) hexInput.value = style[attr];
+      }
+      if (attr === 'fillColor') {
+        const hexInput = panel.querySelector('#fillColorHex');
+        if (hexInput) hexInput.value = style[attr];
+      }
       updateLayerStyle(activeLayerIndex);
     };
     // Adiciona evento ao input numérico
@@ -135,6 +144,33 @@ function renderStylePanel() {
         if (slider) slider.value = style[attr];
         updateLayerStyle(activeLayerIndex);
       };
+    }
+    // Adiciona evento ao campo HEX
+    if (attr === 'color') {
+      const hexInput = panel.querySelector('#colorHex');
+      if (hexInput) {
+        hexInput.oninput = (e) => {
+          let val = e.target.value;
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            style[attr] = val.toUpperCase();
+            panel.querySelector('#color').value = style[attr];
+            updateLayerStyle(activeLayerIndex);
+          }
+        };
+      }
+    }
+    if (attr === 'fillColor') {
+      const hexInput = panel.querySelector('#fillColorHex');
+      if (hexInput) {
+        hexInput.oninput = (e) => {
+          let val = e.target.value;
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            style[attr] = val.toUpperCase();
+            panel.querySelector('#fillColor').value = style[attr];
+            updateLayerStyle(activeLayerIndex);
+          }
+        };
+      }
     }
   });
 }
